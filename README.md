@@ -5,7 +5,7 @@ Geen advertenties, geen internet nodig, geen accounts.
 
 ## 📲 Installeren
 
-1. Download **[PapiamentoBlitz.apk](PapiamentoBlitz.apk)** (of via de [Releases](../../releases)-pagina).
+1. Download **[PapiamentoBlitz.apk](https://github.com/igthubjnrcnrunnhuygfieucbhwihbrcy/Betapapimentokimk/raw/vibe/papiamento-blitz-11a18b/PapiamentoBlitz.apk)** (staat ook bij [Pull request #1 → Files changed](../../pull/1/files)).
 2. Open het bestand op je telefoon. Android vraagt om "Onbekende bronnen / installeren via browser" toe te staan — dat is normaal bij apps buiten de Play Store.
 3. Klaar! Het app-icoon staat tussen je andere apps.
 
