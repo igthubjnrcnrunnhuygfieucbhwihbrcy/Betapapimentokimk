@@ -46,6 +46,18 @@ Vijf bewezen technieken (fluency shaping), meteen geoefend in het Papiamento:
 
 8 lessen, 74 woorden en zinnen: groeten, kleine praatjes, familie, getallen, eten & drinken, werkwoorden, tijd & weer en handige zinnen (Curaçaos Papiamento). De app heeft een Duolingo-achtige look met voortgangsbalkjes per les.
 
+## 🔔 Updates
+
+De app controleert bij het opstarten (als er internet is) of er in de repository een nieuwere
+`version.json` staat. Zo ja, dan verschijnt er automatisch een pop-up met een downloadknop.
+Ook krijg je één keer een "Nieuw in deze versie"-pop-up na een update.
+
+Nieuwe versie uitbrengen:
+1. In `app/AndroidManifest.xml`: `versionCode` +1 en `versionName` aanpassen
+2. In `app/src/.../UpdateChecker.java`: `CURRENT_VERSION` gelijk trekken aan de nieuwe versionCode
+3. `version.json` in de repository-root bijwerken (nieuwe versionCode + wat er nieuw is)
+4. `./build.sh` draaien en de nieuwe `PapiamentoBlitz.apk` in de repository zetten
+
 ## 🛠️ Zelf bouwen
 
 Geen Gradle nodig:

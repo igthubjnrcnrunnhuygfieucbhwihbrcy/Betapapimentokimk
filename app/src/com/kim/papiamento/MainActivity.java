@@ -15,6 +15,27 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         Speaker.init(this);
         buildUi();
+        maybeShowWhatsNew();
+        UpdateChecker.checkAsync(new UpdateChecker.Callback() {
+            @Override
+            public void onResult(boolean updateAvailable, String notes, String apkUrl) {
+                if (updateAvailable) UpdateChecker.showUpdateDialog(MainActivity.this, notes, apkUrl);
+            }
+        });
+    }
+
+    /** Eenmalige pop-up na het installeren van een nieuwe versie. */
+    private void maybeShowWhatsNew() {
+        android.content.SharedPreferences p = getSharedPreferences("progress", MODE_PRIVATE);
+        if (p.getInt("seenVersion", 0) < UpdateChecker.CURRENT_VERSION) {
+            p.edit().putInt("seenVersion", UpdateChecker.CURRENT_VERSION).apply();
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Nieuw in versie 1.2 \uD83C\uDF89")
+                    .setMessage("\u2022 Update-pop-up: de app laat voortaan automatisch weten als er een nieuwe versie is\n"
+                            + "\u2022 Alles uit v1.1: Duolingo-stijl, gemixte oefeningen, XP & streak, uitspraak \uD83D\uDD0A")
+                    .setPositiveButton("Leuk!", null)
+                    .show();
+        }
     }
 
     @Override
