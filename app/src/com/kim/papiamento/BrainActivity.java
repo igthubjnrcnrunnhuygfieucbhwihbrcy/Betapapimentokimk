@@ -44,9 +44,11 @@ public class BrainActivity extends Activity {
                 "Ophalen = leren (het testeffect)",
                 "Je geheugen wordt niet sterker van opnieuw lezen, maar van proberen te herinneren. "
                         + "Eerst zelf hardop proberen en dan pas omdraaien, of een quiz maken, versterkt "
-                        + "het geheugenspoor twee tot drie keer sterker dan passief herlezen.\n\n"
-                        + "Daarom vraag je in deze app altijd eerst zelf te denken, en is de quiz een "
-                        + "vast onderdeel van elk blok.");
+                        + "het geheugenspoor twee tot drie keer sterker dan passief herlezen. Wissel ook "
+                        + "oefenvormen af — kiezen, bouwen, typen — dan moet je brein steeds opnieuw "
+                        + "ophalen in plaats van alleen herkennen.\n\n"
+                        + "Daarom vraag je in deze app altijd eerst zelf te denken, wisselt elke sessie "
+                        + "van oefenvormen en is de quiz een vast onderdeel van elk blok.");
 
         section(root,
                 "Slaap: de stille verwerker",

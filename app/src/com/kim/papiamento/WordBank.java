@@ -3,9 +3,11 @@ package com.kim.papiamento;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Woordenbank + slim herhalings-systeem (spaced repetition).
@@ -18,6 +20,9 @@ import java.util.Iterator;
  *   niveau 3 -> na 7 dagen
  *   niveau 4 -> na 14 dagen
  *   niveau 5 -> na 30 dagen (lange termijn)
+ *
+ * Fout maken demoot één niveau (in plaats van alles te vergeten): zo blijft
+ * oefenen motiverend en volgt de herhaling je echte niveau.
  */
 public class WordBank {
 
@@ -133,35 +138,63 @@ public class WordBank {
         return days * 24L * 60 * 60 * 1000;
     }
 
-    public static int level(Context c, int idx) {
+    // [level, dueAtMillis, seen, correct]
+    private static long[] state(Context c, int idx) {
         try {
             JSONObject o = new JSONObject(prefs(c).getString("srs", "{}"));
-            if (o.has(String.valueOf(idx))) return o.getJSONArray(String.valueOf(idx)).getInt(0);
+            if (o.has(String.valueOf(idx))) {
+                JSONArray a = o.getJSONArray(String.valueOf(idx));
+                int level = a.getInt(0);
+                long due = a.getLong(1);
+                int seen = a.length() > 2 ? a.getInt(2) : 0;
+                int ok = a.length() > 3 ? a.getInt(3) : 0;
+                return new long[]{level, due, seen, ok};
+            }
         } catch (Exception ignored) {
         }
-        return 0;
+        return new long[]{0, 0, 0, 0};
     }
 
-    public static long dueAt(Context c, int idx) {
+    private static void save(Context c, int idx, int level, long dueAt, int seen, int correct) {
         try {
             JSONObject o = new JSONObject(prefs(c).getString("srs", "{}"));
-            if (o.has(String.valueOf(idx))) return o.getJSONArray(String.valueOf(idx)).getLong(1);
-        } catch (Exception ignored) {
-        }
-        return 0L;
-    }
-
-    public static void record(Context c, int idx, boolean correct) {
-        try {
-            JSONObject o = new JSONObject(prefs(c).getString("srs", "{}"));
-            int lv = 0;
-            if (o.has(String.valueOf(idx))) lv = o.getJSONArray(String.valueOf(idx)).getInt(0);
-            lv = correct ? Math.min(lv + 1, MAX_LEVEL) : 0;
-            long due = System.currentTimeMillis() + intervalMillis(correct ? lv : 0);
-            o.put(String.valueOf(idx), new org.json.JSONArray().put(lv).put(due));
+            JSONArray a = new JSONArray();
+            a.put(level).put(dueAt).put(seen).put(correct);
+            o.put(String.valueOf(idx), a);
             prefs(c).edit().putString("srs", o.toString()).apply();
         } catch (Exception ignored) {
         }
+    }
+
+    public static int level(Context c, int idx) {
+        return (int) state(c, idx)[0];
+    }
+
+    public static long dueAt(Context c, int idx) {
+        return state(c, idx)[1];
+    }
+
+    public static boolean isNew(Context c, int idx) {
+        return state(c, idx)[2] == 0;
+    }
+
+    /** 0..1: hoe sterk het woord zit (niveau 5 = 100%). */
+    public static float strength(Context c, int idx) {
+        return level(c, idx) / (float) MAX_LEVEL;
+    }
+
+    public static void record(Context c, int idx, boolean correct) {
+        long[] s = state(c, idx);
+        int level = (int) s[0];
+        int seen = (int) s[2] + 1;
+        int ok = (int) s[3] + (correct ? 1 : 0);
+        if (correct) {
+            level = Math.min(level + 1, MAX_LEVEL);
+        } else if (level > 0) {
+            level = level - 1;
+        }
+        long due = System.currentTimeMillis() + intervalMillis(correct ? level : 0);
+        save(c, idx, level, due, seen, ok);
     }
 
     /** Aantal woorden dat nu aan de beurt is (nog niet beheerst of herhaling vervalt). */
@@ -186,8 +219,32 @@ public class WordBank {
     public static int newCount(Context c) {
         int n = 0;
         for (int i = 0; i < WORDS.length; i++) {
-            if (dueAt(c, i) == 0L) n++;
+            if (isNew(c, i)) n++;
         }
         return n;
+    }
+
+    public static List<String> lessons() {
+        List<String> names = new ArrayList<>();
+        for (Word w : WORDS) {
+            if (!names.contains(w.lesson)) names.add(w.lesson);
+        }
+        return names;
+    }
+
+    public static List<Integer> lessonIndexes(String lesson) {
+        List<Integer> idx = new ArrayList<>();
+        for (int i = 0; i < WORDS.length; i++) {
+            if (WORDS[i].lesson.equals(lesson)) idx.add(i);
+        }
+        return idx;
+    }
+
+    /** Gemiddelde sterkte van een les (0..1). */
+    public static float lessonStrength(Context c, String lesson) {
+        List<Integer> idx = lessonIndexes(lesson);
+        float sum = 0;
+        for (int i : idx) sum += strength(c, i);
+        return idx.isEmpty() ? 0 : sum / idx.size();
     }
 }

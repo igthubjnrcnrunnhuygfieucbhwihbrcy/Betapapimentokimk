@@ -3,8 +3,6 @@ package com.kim.papiamento;
 import android.app.Activity;
 import android.os.Bundle;
 import android.view.Gravity;
-import android.view.View;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -13,198 +11,183 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Lessen oefenen: flashcards met slimme herhaling (SRS) en een multiple-choice quiz.
- * Werkt voor het wekelijkse schema (1x of 2x per week): de kaarten die vervallen
- * staan altijd vooraan.
+ * Lessen oefenen: kies een les of herhaal alles wat vervalt. Elke sessie is
+ * een mix van oefenvormen (zie SessionRunner) met adaptieve herhaling.
  */
 public class LessonActivity extends Activity {
 
-    private int lessonIndex = 0;
-    private boolean quizMode = false;
-
-    // Flashcard-status
-    private List<Integer> queue = new ArrayList<>();
-    private int queuePos = 0;
-    private boolean showingAnswer = false;
-    private int sessionCorrect = 0;
-    private int sessionTotal = 0;
-
-    // Quiz-status
-    private List<Integer> quizQueue = new ArrayList<>();
-    private int quizPos = 0;
-    private int quizCorrect = 0;
-    private String quizAnswer = null;
+    private String currentLesson = null;
+    private boolean reviewMode = false;
 
     private LinearLayout content;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Speaker.init(this);
         content = Ui.root(this);
         setContentView(Ui.scroll(this, content));
-        buildLessonScreen();
+
+        if ("review".equals(getIntent().getStringExtra("mode"))) {
+            startReview();
+        } else {
+            buildPicker();
+        }
     }
 
-    private List<Integer> lessonWordIndexes() {
-        String lesson = WordBank.WORDS[0].lesson;
-        List<String> names = new ArrayList<>();
-        for (WordBank.Word w : WordBank.WORDS) {
-            if (!names.contains(w.lesson)) names.add(w.lesson);
-        }
-        lesson = names.get(lessonIndex);
-        List<Integer> idx = new ArrayList<>();
-        for (int i = 0; i < WordBank.WORDS.length; i++) {
-            if (WordBank.WORDS[i].lesson.equals(lesson)) idx.add(i);
-        }
-        return idx;
-    }
+    // ------------------------------------------------------------------
 
-    private void buildLessonScreen() {
+    private void buildPicker() {
+        currentLesson = null;
+        reviewMode = false;
         content.removeAllViews();
 
-        List<String> names = new ArrayList<>();
-        for (WordBank.Word w : WordBank.WORDS) {
-            if (!names.contains(w.lesson)) names.add(w.lesson);
-        }
-        String lessonName = names.get(lessonIndex);
-
-        TextView back = Ui.text(this, "←  Terug naar menu", 15f, true, Ui.PRIMARY);
+        TextView back = Ui.text(this, "←  Terug naar menu", 15f, true, Ui.BLUE);
         back.setOnClickListener(v -> finish());
         content.addView(back);
 
-        TextView header = Ui.text(this, "Les " + (lessonIndex + 1) + " van " + names.size()
-                + "  •  " + lessonName, 20f, true, Ui.TEXT);
-        header.setPadding(0, Ui.dp(this, 16), 0, 0);
+        TextView header = Ui.text(this, "📗 Lessen", 26f, true, Ui.TEXT);
+        header.setPadding(0, Ui.dp(this, 14), 0, 0);
         content.addView(header);
 
-        LinearLayout nav = new LinearLayout(this);
-        nav.setOrientation(LinearLayout.HORIZONTAL);
-        Button prev = Ui.button(this, "◀ Vorige les", Ui.CARD, Ui.PRIMARY, v -> {
-            lessonIndex = (lessonIndex + names.size() - 1) % names.size();
-            buildLessonScreen();
-        });
-        Button next = Ui.button(this, "Volgende les ▶", Ui.CARD, Ui.PRIMARY, v -> {
-            lessonIndex = (lessonIndex + 1) % names.size();
-            buildLessonScreen();
-        });
-        LinearLayout.LayoutParams half = new LinearLayout.LayoutParams(0, Ui.dp(this, 50), 1f);
-        half.rightMargin = Ui.dp(this, 5);
-        nav.addView(prev, half);
-        LinearLayout.LayoutParams half2 = new LinearLayout.LayoutParams(0, Ui.dp(this, 50), 1f);
-        half2.leftMargin = Ui.dp(this, 5);
-        nav.addView(next, half2);
-        nav.setPadding(0, Ui.dp(this, 6), 0, 0);
-        content.addView(nav);
+        List<String> lessons = WordBank.lessons();
+        for (int i = 0; i < lessons.size(); i++) {
+            final String name = lessons.get(i);
+            List<Integer> idx = WordBank.lessonIndexes(name);
+            float strength = WordBank.lessonStrength(this, name);
 
-        content.addView(Ui.button(this, "🃏  Flashcards (slimme herhaling)", Ui.PRIMARY, 0xFFFFFFFF,
-                v -> startFlashcards()));
-        content.addView(Ui.button(this, "❓  Quiz (actief ophalen)", Ui.ACCENT, 0xFFFFFFFF,
-                v -> startQuiz()));
+            LinearLayout card = Ui.card(this);
+            card.setOnClickListener(v -> startLesson(name));
+            card.setClickable(true);
+
+            TextView t1 = Ui.text(this, "Les " + (i + 1) + "  •  " + name, 17f, true, Ui.TEXT);
+            card.addView(t1);
+            TextView t2 = Ui.text(this, idx.size() + " woorden", 13f, false, Ui.MUTED);
+            t2.setPadding(0, Ui.dp(this, 2), 0, Ui.dp(this, 8));
+            card.addView(t2);
+            LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 14));
+            card.addView(Ui.progressBar(this, strength,
+                    strength >= 0.8f ? Ui.PRIMARY : strength >= 0.4f ? Ui.YELLOW : Ui.BORDER), barLp);
+            content.addView(card, Ui.cardParams(this));
+        }
 
         TextView hint = Ui.text(this,
-                "Hoe het werkt:\n"
-                        + "• Flashcards: eerst zelf hardop proberen, dan omdraaien. Wist je hem? "
-                        + "dan komt hij pas na 1, 3, 7, 14 en 30 dagen terug.\n"
-                        + "• Quiz: ophalen uit je geheugen is dé manier om iets vast te zetten.",
-                14f, false, Ui.MUTED);
-        hint.setPadding(0, Ui.dp(this, 18), 0, 0);
+                "De balk laat zien hoe stevig elke les zit (niveau 5 = volledig in je lange termijn).",
+                13f, false, Ui.MUTED);
+        hint.setPadding(0, Ui.dp(this, 16), 0, 0);
         content.addView(hint);
     }
 
     // ------------------------------------------------------------------
-    // Flashcards
+
+    private void startLesson(String lesson) {
+        currentLesson = lesson;
+        List<Integer> all = WordBank.lessonIndexes(lesson);
+        List<Integer> newWords = new ArrayList<>();
+        List<Integer> dueWords = new ArrayList<>();
+        long now = System.currentTimeMillis();
+        for (int i : all) {
+            if (WordBank.isNew(this, i)) newWords.add(i);
+            else if (WordBank.dueAt(this, i) <= now) dueWords.add(i);
+        }
+        Collections.shuffle(newWords);
+        Collections.shuffle(dueWords);
+        if (newWords.size() > 4) newWords = new ArrayList<>(newWords.subList(0, 4));
+        if (dueWords.size() > 6) dueWords = new ArrayList<>(dueWords.subList(0, 6));
+
+        if (newWords.isEmpty() && dueWords.isEmpty()) {
+            buildAllDone("Deze les zit al helemaal vast! 🎉\n\nDe app haalt je terug zodra er weer een herhaling vervalt.");
+            return;
+        }
+        runSession("Les  •  " + lesson, newWords, dueWords);
+    }
+
+    private void startReview() {
+        reviewMode = true;
+        List<Integer> dueWords = new ArrayList<>();
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < WordBank.WORDS.length; i++) {
+            if (!WordBank.isNew(this, i) && WordBank.dueAt(this, i) <= now) dueWords.add(i);
+        }
+        Collections.shuffle(dueWords);
+        if (dueWords.size() > 12) dueWords = new ArrayList<>(dueWords.subList(0, 12));
+
+        if (dueWords.isEmpty()) {
+            buildAllDone("Niets te herhalen! 🎉\n\nJe brein heeft alles vastgezet. Nieuwe woorden leer je via de lessen.");
+            return;
+        }
+        runSession("Herhaling  •  " + dueWords.size() + " woorden", new ArrayList<Integer>(), dueWords);
+    }
+
     // ------------------------------------------------------------------
 
-    private void startFlashcards() {
-        List<Integer> lesson = lessonWordIndexes();
-        List<Integer> due = new ArrayList<>();
-        List<Integer> fresh = new ArrayList<>();
-        long now = System.currentTimeMillis();
-        for (int i : lesson) {
-            if (WordBank.dueAt(this, i) == 0L) fresh.add(i);
-            else if (WordBank.dueAt(this, i) <= now) due.add(i);
-        }
-        Collections.shuffle(due);
-        Collections.shuffle(fresh);
-        queue = new ArrayList<>();
-        queue.addAll(due);
-        queue.addAll(fresh);
-        if (queue.size() > 12) queue = new ArrayList<>(queue.subList(0, 12));
-        queuePos = 0;
-        sessionCorrect = 0;
-        sessionTotal = 0;
-        if (queue.isEmpty()) {
-            buildDoneScreen("Alles uit deze les zit al vast! 🎉\n\nKom terug als de herhaling vervalt — de app onthoudt dat voor je.");
-            return;
-        }
-        showCard();
-    }
-
-    private void showCard() {
-        if (queuePos >= queue.size()) {
-            buildDoneScreen("Klaar! " + sessionCorrect + " van " + sessionTotal
-                    + " goed.\n\nDe woorden die je wist komen pas over 1, 3, 7, 14 of 30 dagen "
-                    + "terug — precies op het moment dat je brein ze bijna vergeet. Dat is het moment "
-                    + "waarop ze naar de lange termijn schuiven. 💪");
-            return;
-        }
-        showingAnswer = false;
+    private void runSession(String title, List<Integer> newWords, List<Integer> dueWords) {
         content.removeAllViews();
 
-        int idx = queue.get(queuePos);
-        WordBank.Word w = WordBank.WORDS[idx];
+        TextView t = Ui.text(this, title, 16f, true, Ui.MUTED);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 4));
+        content.addView(t);
 
-        TextView back = Ui.text(this, "←  Stoppen", 15f, true, Ui.PRIMARY);
-        back.setOnClickListener(v -> buildLessonScreen());
-        content.addView(back);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        content.addView(box);
 
-        TextView progress = Ui.text(this, "Kaart " + (queuePos + 1) + " van " + queue.size()
-                + "  •  " + w.lesson, 14f, false, Ui.MUTED);
-        progress.setPadding(0, Ui.dp(this, 10), 0, 0);
-        content.addView(progress);
+        new SessionRunner(this, box, new Runnable() {
+            @Override
+            public void run() {
+                if (reviewMode) startReview();
+                else buildPicker();
+            }
+        }, new SessionRunner.Callback() {
+            @Override
+            public void onDone(int xp, int asked, int correct, List<Integer> missed) {
+                Progress.addXp(LessonActivity.this, xp);
+                Progress.touchStreak(LessonActivity.this);
+                buildResult(xp, asked, correct, missed);
+            }
+        }).start(newWords, dueWords);
+    }
 
+    private void buildResult(int xp, int asked, int correct, List<Integer> missed) {
+        content.removeAllViews();
+
+        int pct = asked == 0 ? 100 : Math.round(correct * 100f / asked);
         LinearLayout card = Ui.card(this);
-        card.setPadding(Ui.dp(this, 24), Ui.dp(this, 40), Ui.dp(this, 24), Ui.dp(this, 40));
+        card.setPadding(Ui.dp(this, 24), Ui.dp(this, 32), Ui.dp(this, 24), Ui.dp(this, 32));
+        card.addView(Ui.bigCardText(this, pct >= 80 ? "🎉 Uitstekend!" : pct >= 50 ? "👍 Goed bezig!" : "💪 Blijven oefenen!", 24f, Ui.PRIMARY));
 
-        TextView nl = Ui.bigCardText(this, w.nl, 26f, Ui.TEXT);
-        card.addView(nl);
+        TextView stats = Ui.text(this,
+                "⚡ +" + xp + " XP\n🎯 " + correct + " van " + asked + " goed (" + pct + "%)\n🔥 Streak: "
+                        + Progress.streak(this) + " dag(en)",
+                17f, false, Ui.TEXT);
+        stats.setGravity(Gravity.CENTER);
+        stats.setPadding(0, Ui.dp(this, 16), 0, 0);
+        card.addView(stats);
 
-        TextView pa = Ui.bigCardText(this, showingAnswer ? w.pa : "…", 34f, Ui.PRIMARY);
-        pa.setPadding(0, Ui.dp(this, 24), 0, 0);
-        card.addView(pa);
-
-        if (showingAnswer) {
-            TextView tip = Ui.bigCardText(this, "Zeg het hardop voor je doortikt!", 13f, Ui.MUTED);
-            tip.setPadding(0, Ui.dp(this, 10), 0, 0);
-            card.addView(tip);
-        }
+        TextView note = Ui.text(this,
+                missed.isEmpty()
+                        ? "Geen fouten — deze woorden schuiven door naar de volgende herhalingsronde (1, 3, 7, 14, 30 dagen)."
+                        : "De woorden die je miste komen vanzelf terug, binnen deze sessie én in je herhalingsschema.",
+                14f, false, Ui.MUTED);
+        note.setGravity(Gravity.CENTER);
+        note.setPadding(0, Ui.dp(this, 14), 0, 0);
+        card.addView(note);
         content.addView(card, Ui.cardParams(this));
 
-        if (!showingAnswer) {
-            content.addView(Ui.button(this, "Toon antwoord", Ui.PRIMARY, 0xFFFFFFFF,
-                    v -> { showingAnswer = true; showCard(); }));
-        } else {
-            content.addView(Ui.button(this, "✓  Wist ik", Ui.GOOD, 0xFFFFFFFF, v -> {
-                WordBank.record(this, idx, true);
-                sessionCorrect++;
-                sessionTotal++;
-                queuePos++;
-                showCard();
-            }));
-            content.addView(Ui.button(this, "✗  Nog lastig", Ui.BAD, 0xFFFFFFFF, v -> {
-                WordBank.record(this, idx, false);
-                sessionTotal++;
-                queue.add(idx); // komt binnen 2 minuten terug
-                queuePos++;
-                showCard();
-            }));
-        }
+        content.addView(Ui.button(this, "Nog een sessie", Ui.PRIMARY, 0xFFFFFFFF, v -> {
+            if (reviewMode) startReview();
+            else startLesson(currentLesson);
+        }));
+        content.addView(Ui.button(this, "Terug naar menu", 0xFFFFFFFF, Ui.BLUE, v -> finish()));
     }
 
-    private void buildDoneScreen(String message) {
+    private void buildAllDone(String message) {
         content.removeAllViews();
-        TextView back = Ui.text(this, "←  Terug naar lessen", 15f, true, Ui.PRIMARY);
-        back.setOnClickListener(v -> buildLessonScreen());
+
+        TextView back = Ui.text(this, "←  Terug", 15f, true, Ui.BLUE);
+        back.setOnClickListener(v -> buildPicker());
         content.addView(back);
 
         LinearLayout card = Ui.card(this);
@@ -213,79 +196,6 @@ public class LessonActivity extends Activity {
         card.addView(m);
         content.addView(card, Ui.cardParams(this));
 
-        content.addView(Ui.button(this, "Opnieuw oefenen", Ui.PRIMARY, 0xFFFFFFFF, v -> startFlashcards()));
-        content.addView(Ui.button(this, "Terug naar menu", Ui.CARD, Ui.PRIMARY, v -> finish()));
-    }
-
-    // ------------------------------------------------------------------
-    // Quiz
-    // ------------------------------------------------------------------
-
-    private void startQuiz() {
-        List<Integer> lesson = lessonWordIndexes();
-        quizQueue = new ArrayList<>(lesson);
-        Collections.shuffle(quizQueue);
-        quizPos = 0;
-        quizCorrect = 0;
-        showQuizQuestion();
-    }
-
-    private void showQuizQuestion() {
-        if (quizPos >= quizQueue.size()) {
-            int total = quizQueue.size();
-            buildDoneScreen("Quiz klaar! Score: " + quizCorrect + " / " + total + "\n\n"
-                    + (quizCorrect == total
-                    ? "Perfect! Je brein heeft deze les vastgezet. 🔒"
-                    : "De gemiste woorden komen automatisch terug in je herhaling."));
-            return;
-        }
-        content.removeAllViews();
-
-        int idx = quizQueue.get(quizPos);
-        WordBank.Word w = WordBank.WORDS[idx];
-        quizAnswer = w.pa;
-
-        TextView back = Ui.text(this, "←  Stoppen", 15f, true, Ui.PRIMARY);
-        back.setOnClickListener(v -> buildLessonScreen());
-        content.addView(back);
-
-        TextView progress = Ui.text(this, "Vraag " + (quizPos + 1) + " van " + quizQueue.size()
-                + "  •  goed: " + quizCorrect, 14f, false, Ui.MUTED);
-        progress.setPadding(0, Ui.dp(this, 10), 0, 0);
-        content.addView(progress);
-
-        LinearLayout card = Ui.card(this);
-        card.setPadding(Ui.dp(this, 24), Ui.dp(this, 32), Ui.dp(this, 24), Ui.dp(this, 32));
-        TextView q = Ui.bigCardText(this, w.nl, 24f, Ui.TEXT);
-        card.addView(q);
-        TextView sub = Ui.bigCardText(this, "Wat is dit in het Papiamento?", 14f, Ui.MUTED);
-        sub.setPadding(0, Ui.dp(this, 8), 0, 0);
-        card.addView(sub);
-        content.addView(card, Ui.cardParams(this));
-
-        List<Integer> options = new ArrayList<>();
-        options.add(idx);
-        while (options.size() < Math.min(4, WordBank.WORDS.length)) {
-            int r = (int) (Math.random() * WordBank.WORDS.length);
-            if (!options.contains(r)) options.add(r);
-        }
-        Collections.shuffle(options);
-
-        for (final int optIdx : options) {
-            final String optPa = WordBank.WORDS[optIdx].pa;
-            Button b = Ui.button(this, optPa, Ui.CARD, Ui.TEXT, null);
-
-            b.setOnClickListener(v -> {
-
-                                boolean correct = optPa.equals(quizAnswer);
-                WordBank.record(this, idx, correct);
-                if (correct) quizCorrect++;
-                b.setBackground(Ui.rounded(correct ? Ui.GOOD : Ui.BAD, Ui.dp(this, 14)));
-                b.setTextColor(0xFFFFFFFF);
-                content.postDelayed(this::showQuizQuestion, 700);
-
-            });
-            content.addView(b);
-        }
+        content.addView(Ui.button(this, "Terug naar menu", Ui.PRIMARY, 0xFFFFFFFF, v -> finish()));
     }
 }

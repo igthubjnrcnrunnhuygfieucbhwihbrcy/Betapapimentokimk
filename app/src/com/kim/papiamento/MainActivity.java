@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -12,49 +13,76 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Speaker.init(this);
+        buildUi();
+    }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        buildUi(); // ververs streak/XP bij terugkeer
+    }
+
+    private void buildUi() {
         LinearLayout root = Ui.root(this);
 
-        TextView title = Ui.text(this, "Papiamento Blitz", 32f, true, Ui.PRIMARY);
+        root.addView(Ui.topBar(this, Progress.streak(this), Progress.xp(this)));
+
+        TextView title = Ui.text(this, "Papiamento Blitz", 30f, true, Ui.PRIMARY);
         title.setGravity(Gravity.CENTER);
+        title.setPadding(0, Ui.dp(this, 18), 0, 0);
         root.addView(title);
 
-        TextView sub = Ui.text(this,
-                "Snel Papiamento leren met je brein als bondgenoot — gratis, offline, geen advertenties",
-                14f, false, Ui.MUTED);
-        sub.setGravity(Gravity.CENTER);
-        sub.setPadding(0, Ui.dp(this, 4), 0, 0);
-        root.addView(sub);
+        LinearLayout bubble = Ui.card(this);
+        bubble.addView(Ui.text(this,
+                "🦜  Bon bini! Elke dag een klein beetje — dan praat je binnenkort Papiamento!",
+                15f, false, Ui.TEXT));
+        root.addView(bubble, Ui.cardParams(this));
 
-        LinearLayout stats = Ui.card(this);
         int due = WordBank.dueCount(this);
         int mastered = WordBank.masteredCount(this);
         int fresh = WordBank.newCount(this);
-        TextView statText = Ui.text(this,
-                "📊 Vandaag te herhalen: " + due + " woorden\n"
-                        + "✅ Vastgezeten (lange termijn): " + mastered + " van " + WordBank.WORDS.length + "\n"
-                        + "🌱 Nog nieuw: " + fresh,
-                15f, false, Ui.TEXT);
-        stats.addView(statText);
+
+        LinearLayout stats = Ui.card(this);
+        stats.addView(Ui.text(this,
+                "✅ Vast in je lange termijn: " + mastered + " van " + WordBank.WORDS.length,
+                14f, true, Ui.TEXT));
+        stats.addView(Ui.text(this, "🌱 Nieuw: " + fresh + "   •   🔁 Te herhalen: " + due,
+                14f, false, Ui.MUTED));
+        LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 16));
+        barLp.topMargin = Ui.dp(this, 10);
+        stats.addView(Ui.progressBar(this, mastered / (float) WordBank.WORDS.length, Ui.PRIMARY), barLp);
         root.addView(stats, Ui.cardParams(this));
 
-        root.addView(menuCard("⚡", "Snelle 1-dags cursus",
-                "±1 uur in 4 blokken met 1 pauze — vandaag nog de basis praten", new Intent(this, CrashCourseActivity.class)));
+        Button hero = Ui.button(this, "⚡ SNELLE CURSUS — ±1 UUR", Ui.PRIMARY, 0xFFFFFFFF,
+                v -> startActivity(new Intent(this, CrashCourseActivity.class)));
+        LinearLayout.LayoutParams heroParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 62));
+        heroParams.topMargin = Ui.dp(this, 20);
+        root.addView(hero, heroParams);
+
+        Button review = Ui.button(this,
+                due > 0 ? "🔁 HERHALEN — " + due + " woorden klaar" : "🔁 HERHALEN — niets vervalt, top!",
+                Ui.BLUE, 0xFFFFFFFF,
+                v -> {
+                    Intent i = new Intent(this, LessonActivity.class);
+                    i.putExtra("mode", "review");
+                    startActivity(i);
+                });
+        root.addView(review);
 
         root.addView(menuCard("📗", "Lessen oefenen",
-                "Flashcards en quiz per onderwerp, met slimme herhaling", new Intent(this, LessonActivity.class)));
-
-        root.addView(menuCard("🗓️", "Schema 1× of 2× per week",
-                "De app onthoudt wat aan herhaling toe is — 20 à 30 minuten per sessie is genoeg", new Intent(this, LessonActivity.class)));
+                "8 lessen met een mix van oefeningen: kiezen, bouwen, typen", new Intent(this, LessonActivity.class)));
 
         root.addView(menuCard("🗣️", "Anti-stotter training",
-                "Ademhaling, zachte aanloop en gelijkmatig tempo — oefen meteen in het Papiamento", new Intent(this, StutterActivity.class)));
+                "Ademhaling, zachte aanloop en gelijkmatig tempo", new Intent(this, StutterActivity.class)));
 
         root.addView(menuCard("🧠", "Zo onthoudt je brein het",
                 "Korte en lange termijn geheugen in 2 minuten uitgelegd", new Intent(this, BrainActivity.class)));
 
         TextView foot = Ui.text(this,
-                "Tip: kies één schema en blijf erbij — kleine beetjes winnen van lange dagen.",
+                "Elke sessie telt voor je 🔥 streak. 20 minuten, 2× per week is genoeg — de tussenpozen doen het werk.",
                 13f, false, Ui.MUTED);
         foot.setGravity(Gravity.CENTER);
         foot.setPadding(0, Ui.dp(this, 20), 0, 0);

@@ -17,6 +17,9 @@ Werkt op Android 5.0 (Lollipop) en nieuwer.
 - **Micro-herhaling:** binnen een sessie komen woorden na ±2 en ±10 minuten terug — net vóór het spoor vervaagt.
 - **Spaced repetition (lange termijn):** wist je een woord? Dan komt het terug na **1 → 3 → 7 → 14 → 30 dagen**, precies op het moment dat je brein het bijna vergeet.
 - **Actief ophalen (testegeffect):** eerst zelf hardop proberen, dan pas omdraaien. Quizzen versterken het geheugen 2–3× sterker dan herlezen.
+- **Afwisselende oefenvormen:** kiezen (multiple choice), woorden bouwen met tiles, zelf typen en intro-kaarten met uitspraak 🔊 — je brein moet steeds opnieuw ophalen in plaats van alleen herkennen.
+- **Adaptief:** fouten demoten een woord maar één niveau en komen binnen dezelfde sessie terug tot je ze goed hebt.
+- **Motivatie:** XP ⚡ en dag-streak 🔥 belonen elke sessie (elk beetje telt).
 - **Slaap:** tijdens de slaap wordt alles van korte naar lange termijn verplaatst. Daarom staat er in de app "herhaal morgen 5 minuten".
 
 ## 📅 Kies je eigen tempo (allemaal even effectief)
@@ -41,7 +44,7 @@ Vijf bewezen technieken (fluency shaping), meteen geoefend in het Papiamento:
 
 ## 📚 Inhoud
 
-8 lessen, 74 woorden en zinnen: groeten, kleine praatjes, familie, getallen, eten & drinken, werkwoorden, tijd & weer en handige zinnen (Curaçaos Papiamento).
+8 lessen, 74 woorden en zinnen: groeten, kleine praatjes, familie, getallen, eten & drinken, werkwoorden, tijd & weer en handige zinnen (Curaçaos Papiamento). De app heeft een Duolingo-achtige look met voortgangsbalkjes per les.
 
 ## 🛠️ Zelf bouwen
 

@@ -136,7 +136,7 @@ public class StutterActivity extends Activity {
         content.addView(card, Ui.cardParams(this));
 
         int next = (i + 1) % PRACTICE_SENTENCES.length;
-        content.addView(Ui.button(this, "Volgende zin ▶", Ui.ACCENT, 0xFFFFFFFF, v -> {
+        content.addView(Ui.button(this, "Volgende zin ▶", Ui.BLUE, 0xFFFFFFFF, v -> {
             content.removeView(card);
             content.removeViewAt(content.getChildCount() - 1);
             showPracticeSentence(next);
